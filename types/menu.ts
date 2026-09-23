@@ -51,5 +51,5 @@ export const SHOP_LABELS: Record<Shop, string> = {
 
 /** Ответ API об ошибке — используется и на сервере, и на клиенте. */
 export interface ApiErrorBody {
-  error: string;
+  error:  string;
 }
