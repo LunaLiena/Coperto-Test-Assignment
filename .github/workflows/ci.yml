@@ -19,11 +19,10 @@ jobs:
           node-version: 20
           cache: npm
 
-      # Репозиторий сдаётся без закоммиченного package-lock.json (см. README),
-      # поэтому npm install, а не npm ci. Если в репозитории появится
-      # package-lock.json — стоит переключиться на npm ci для воспроизводимости.
+      # package-lock.json закоммичен в репозиторий — npm ci ставит зависимости
+      # строго по лок-файлу и быстрее, чем npm install.
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -36,3 +35,53 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Деплой на Vercel (бесплатный план) только после того, как все проверки
+  # прошли, и только для push в main — на PR отдельный preview-деплой не
+  # нужен, Vercel и так может делать его сам через встроенную интеграцию
+  # GitHub <-> Vercel, если проект подключён через сайт vercel.com.
+  #
+  # Нужны три секрета в Settings -> Secrets and variables -> Actions:
+  #   VERCEL_TOKEN      — Account Settings -> Tokens на vercel.com
+  #   VERCEL_ORG_ID      — из .vercel/project.json после `vercel link` локально
+  #   VERCEL_PROJECT_ID  — оттуда же
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build for Vercel
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy prebuilt output to Vercel
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
