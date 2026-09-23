@@ -31,6 +31,12 @@ CI (`.github/workflows/ci.yml`) на каждый push/PR в `main` прогон
 `npm install` рекомендуется закоммитить лок-файл и тогда переключить
 workflow на `npm ci` для воспроизводимых сборок.
 
+
+## Деплой на Vercel
+
+- https://coperto-test-assignment.vercel.app/
+- https://coperto-test-assignment-git-main-radmir0099lol-4801s-projects.vercel.app/
+
 ## Как разложены слои
 
 ```
